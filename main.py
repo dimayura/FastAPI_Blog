@@ -3,6 +3,11 @@ from fastapi import FastAPI, Request ,HTTPException,status
 from fastapi.templating import Jinja2Templates
 #from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
 
 
 app= FastAPI()
@@ -19,7 +24,7 @@ posts:list[dict]=[
         "date_posted":"March 25,2026"
     },
     {
-            "id":2,
+        "id":2,
         "author":"pankaj tanwar",
         "title":"Rasperberry PI is really good",
         "content":"i use it to create cool stuffs!",
@@ -39,13 +44,35 @@ def home(request:Request):
         "count":len(posts)
         })
 
-@app.get("/get/posts/{post_id}")
-def get_all_posts(post_id:int):
+@app.get("/api/get/posts/{post_id}",include_in_schema=False)
+@app.get("/get/posts/{post_id}",include_in_schema=False)
+def get_all_posts(request:Request,post_id:int):
     for post in posts:
         if post.get("id")==post_id:
-            return post
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Post not found")
+            title=post["title"[:50]]
+            return templates.TemplateResponse(request,"post.html",{"post":post,"title":title})
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Post not found")
 # @app.get("/api/posts", response_class=PlainTextResponse)
 # def get_posts():
 #     return str(posts)
 
+@app.exception_handler(StarletteHTTPException)
+def general_http_exception_handler(request:Request,exception:StarletteHTTPException):
+    message=(
+        exception.detail
+        if exception.detail
+        else "An error occured.Please check your request and try again."
+    )
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            status_code=exception.status_code,
+            content={"detail":message},
+        )
+    return templates.TemplateResponse(request,"error.html",
+                                      {
+                                          "status_code":exception.status_code,
+                                          "title":exception.status_code,
+                                          "message":message,
+                                      },
+                                      status_code=exception.status_code,
+                                      )
