@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request ,HTTPException,status
 #from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 #from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+
 
 app= FastAPI()
 
@@ -38,10 +39,13 @@ def home(request:Request):
         "count":len(posts)
         })
 
-@app.get("/get/posts")
-def get_all_posts():
-    return posts
-
+@app.get("/get/posts/{post_id}")
+def get_all_posts(post_id:int):
+    for post in posts:
+        if post.get("id")==post_id:
+            return post
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Post not found")
 # @app.get("/api/posts", response_class=PlainTextResponse)
 # def get_posts():
 #     return str(posts)
+
